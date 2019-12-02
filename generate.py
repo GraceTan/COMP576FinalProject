@@ -8,8 +8,16 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import LSTM
+from tensorflow.keras.layers import GRU
 from tensorflow.keras.layers import BatchNormalization as BatchNorm
 from tensorflow.keras.layers import Activation
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
+import tensorflow.keras
+config = tf.ConfigProto( device_count = {'GPU': 0})
+sess = tf.Session(config = config)
+tensorflow.keras.backend.set_session(sess)
 
 def generate():
     """ Generate a piano midi file """
@@ -57,14 +65,23 @@ def prepare_sequences(notes, pitchnames, n_vocab):
 def create_network(network_input, n_vocab):
     """ create the structure of the neural network """
     model = Sequential()
-    model.add(LSTM(
+    #model.add(LSTM(
+    #    512,
+    #    input_shape=(network_input.shape[1], network_input.shape[2]),
+    #    recurrent_dropout=0.3,
+    #    return_sequences=True
+    #))
+    #model.add(LSTM(512, return_sequences=True, recurrent_dropout=0.3,))
+    #model.add(LSTM(512))
+
+    model.add(GRU(
         512,
         input_shape=(network_input.shape[1], network_input.shape[2]),
         recurrent_dropout=0.3,
         return_sequences=True
     ))
-    model.add(LSTM(512, return_sequences=True, recurrent_dropout=0.3,))
-    model.add(LSTM(512))
+    model.add(GRU(512, return_sequences=False, recurrent_dropout=0.3,))
+    # model.add(GRU(512))
     model.add(BatchNorm())
     model.add(Dropout(0.3))
     model.add(Dense(256))
@@ -77,7 +94,7 @@ def create_network(network_input, n_vocab):
 
     # Load the weights to each node
     # model.load_weights('weights-improvement-195-0.1490-bigger.hdf5')
-    model.load_weights('weights-improvement-31-3.0448-bigger.hdf5')
+    model.load_weights('weights-improvement-GRU-123-1.8256-bigger.hdf5')
 
 
     return model
@@ -141,7 +158,7 @@ def create_midi(prediction_output):
 
     midi_stream = stream.Stream(output_notes)
 
-    midi_stream.write('midi', fp='test_output.mid')
+    midi_stream.write('midi', fp='GRU_test_output.mid')
 
 if __name__ == '__main__':
     generate()

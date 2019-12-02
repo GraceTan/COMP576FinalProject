@@ -9,10 +9,16 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import LSTM
+from tensorflow.keras.layers import GRU
 from tensorflow.keras.layers import Activation
 from tensorflow.keras.layers import BatchNormalization as BatchNorm
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.callbacks import ModelCheckpoint
+
+import tensorflow.keras
+config = tf.ConfigProto( device_count = {'GPU': 0})
+sess = tf.Session(config = config)
+tensorflow.keras.backend.set_session(sess)
 
 def train_network():
     """ Train a Neural Network to generate music """
@@ -57,7 +63,7 @@ def get_notes():
 
 def prepare_sequences(notes, n_vocab):
     """ Prepare the sequences used by the Neural Network """
-    sequence_length = 100
+    sequence_length = 200
 
     # get all pitch names
     pitchnames = sorted(set(item for item in notes))
@@ -76,9 +82,12 @@ def prepare_sequences(notes, n_vocab):
         network_output.append(note_to_int[sequence_out])
 
     n_patterns = len(network_input)
+    cutoff = int(n_patterns/2)
+    network_input = network_input[:cutoff]
+    network_output = network_output[:cutoff]
 
     # reshape the input into a format compatible with LSTM layers
-    network_input = numpy.reshape(network_input, (n_patterns, sequence_length, 1))
+    network_input = numpy.reshape(network_input, (len(network_input), sequence_length, 1))
     # normalize input
     network_input = network_input / float(n_vocab)
 
@@ -89,14 +98,14 @@ def prepare_sequences(notes, n_vocab):
 def create_network(network_input, n_vocab):
     """ create the structure of the neural network """
     model = Sequential()
-    model.add(LSTM(
+    model.add(GRU(
         512,
         input_shape=(network_input.shape[1], network_input.shape[2]),
         recurrent_dropout=0.3,
         return_sequences=True
     ))
-    model.add(LSTM(512, return_sequences=True, recurrent_dropout=0.3,))
-    model.add(LSTM(512))
+    model.add(GRU(512, return_sequences=False, recurrent_dropout=0.3,))
+    # model.add(GRU(512))
     model.add(BatchNorm())
     model.add(Dropout(0.3))
     model.add(Dense(256))
@@ -111,7 +120,7 @@ def create_network(network_input, n_vocab):
 
 def train(model, network_input, network_output):
     """ train the neural network """
-    filepath = "weights-improvement-{epoch:02d}-{loss:.4f}-bigger.hdf5"
+    filepath = "weights-improvement-GRU-{epoch:02d}-{loss:.4f}-bigger.hdf5"
     checkpoint = ModelCheckpoint(
         filepath,
         monitor='loss',
