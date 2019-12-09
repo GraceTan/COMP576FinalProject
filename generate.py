@@ -22,7 +22,7 @@ tensorflow.keras.backend.set_session(sess)
 def generate():
     """ Generate a piano midi file """
     #load the notes used to train the model
-    with open('data/notes', 'rb') as filepath:
+    with open('data/schubert', 'rb') as filepath:
         notes = pickle.load(filepath)
 
     # Get all pitch names
@@ -43,13 +43,21 @@ def prepare_sequences(notes, pitchnames, n_vocab):
     """ Prepare the sequences used by the Neural Network """
     # map between notes and integers and back
     note_to_int = dict((note, number) for number, note in enumerate(pitchnames))
-
+    
+    cleaned_notes = []
+    #for n in notes:
+    #    if note_to_int[n] < 358:
+    #        cleaned_notes.append(n)
+    #notes = cleaned_notes
     sequence_length = 100
     network_input = []
     output = []
     for i in range(0, len(notes) - sequence_length, 1):
         sequence_in = notes[i:i + sequence_length]
         sequence_out = notes[i + sequence_length]
+        #for char in sequence_in:
+        #    if note_to_int[char] < 453:
+        #        network_input.append(note_to_int[char])
         network_input.append([note_to_int[char] for char in sequence_in])
         output.append(note_to_int[sequence_out])
 
@@ -59,29 +67,33 @@ def prepare_sequences(notes, pitchnames, n_vocab):
     normalized_input = numpy.reshape(network_input, (n_patterns, sequence_length, 1))
     # normalize input
     normalized_input = normalized_input / float(n_vocab)
-
+    # normalized_input = normalized_input / float(358)
     return (network_input, normalized_input)
 
 def create_network(network_input, n_vocab):
     """ create the structure of the neural network """
+    print(network_input.shape)
+    print(n_vocab)
     model = Sequential()
+    model.add(LSTM(
+        512,
+        input_shape=(network_input.shape[1], network_input.shape[2]),
+        recurrent_dropout=0.3,
+        return_sequences=True
+    ))
+    model.add(LSTM(512, return_sequences=True, recurrent_dropout=0.3,))
+    # model.add(LSTM(512))
+
+    # for GRU
     #model.add(LSTM(
     #    512,
     #    input_shape=(network_input.shape[1], network_input.shape[2]),
     #    recurrent_dropout=0.3,
     #    return_sequences=True
     #))
-    #model.add(LSTM(512, return_sequences=True, recurrent_dropout=0.3,))
-    #model.add(LSTM(512))
-
-    model.add(GRU(
-        512,
-        input_shape=(network_input.shape[1], network_input.shape[2]),
-        recurrent_dropout=0.3,
-        return_sequences=True
-    ))
-    model.add(GRU(512, return_sequences=False, recurrent_dropout=0.3,))
+    #model.add(LSTM(512, return_sequences=False, recurrent_dropout=0.3,))
     # model.add(GRU(512))
+    
     model.add(BatchNorm())
     model.add(Dropout(0.3))
     model.add(Dense(256))
@@ -89,36 +101,43 @@ def create_network(network_input, n_vocab):
     model.add(BatchNorm())
     model.add(Dropout(0.3))
     model.add(Dense(n_vocab))
+    #model.add(Dense(358))
     model.add(Activation('softmax'))
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
     # Load the weights to each node
-    # model.load_weights('weights-improvement-195-0.1490-bigger.hdf5')
-    model.load_weights('weights-improvement-GRU-123-1.8256-bigger.hdf5')
-
-
+    #model.load_weights('keepweights/weights-improvement-116-0.5497-bigger.hdf5')
+    # model.load_weights('keepweights/weights-improvement-GRU-123-1.8256-bigger.hdf5')
+    # model.load_weights('keepweights/maestrodata-LSTM-22-4.5200-bigger.hdf5')
+    model.load_weights('schubert_LSTM_weights/schubert-LSTM-200-2.5710-bigger.hdf5')
     return model
 
 def generate_notes(model, network_input, pitchnames, n_vocab):
     """ Generate notes from the neural network based on a sequence of notes """
     # pick a random sequence from the input as a starting point for the prediction
     start = numpy.random.randint(0, len(network_input)-1)
-
+    
     int_to_note = dict((number, note) for number, note in enumerate(pitchnames))
 
     pattern = network_input[start]
     prediction_output = []
-
+    print("pattern: ", len(pattern))
     # generate 500 notes
     for note_index in range(500):
         if note_index % 10 == 0:
             print("on index: ", note_index)
         prediction_input = numpy.reshape(pattern, (1, len(pattern), 1))
+        print("RESHAPE: ", prediction_input)
         prediction_input = prediction_input / float(n_vocab)
-
+        print("NORM: ", prediction_input)
         prediction = model.predict(prediction_input, verbose=0)
-
+        print("PREDICT: ", prediction)
+        print(prediction.shape)
+        print("first note: ", prediction[0][0][0])
         index = numpy.argmax(prediction)
+        #index = numpy.argmax(prediction[0][0])
+        print("idx", index) 
+        print("n_vocab: ", n_vocab)
         result = int_to_note[index]
         prediction_output.append(result)
 
@@ -158,7 +177,7 @@ def create_midi(prediction_output):
 
     midi_stream = stream.Stream(output_notes)
 
-    midi_stream.write('midi', fp='GRU_test_output.mid')
+    midi_stream.write('midi', fp='schubert_LSTM_test_and_train_output.mid')
 
 if __name__ == '__main__':
     generate()

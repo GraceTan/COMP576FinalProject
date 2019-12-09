@@ -14,15 +14,19 @@ from tensorflow.keras.layers import Activation
 from tensorflow.keras.layers import BatchNormalization as BatchNorm
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.callbacks import ModelCheckpoint
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 import tensorflow.keras
-config = tf.ConfigProto( device_count = {'GPU': 0})
+config = tf.ConfigProto( device_count = {'GPU': 1})
 sess = tf.Session(config = config)
 tensorflow.keras.backend.set_session(sess)
 
 def train_network():
     """ Train a Neural Network to generate music """
-    notes = get_notes()
+    #notes = get_notes()
+    with open('data/schubert', 'rb') as filepath:
+        notes = pickle.load(filepath)
 
     # get amount of pitch names
     n_vocab = len(set(notes))
@@ -37,7 +41,7 @@ def get_notes():
     """ Get all the notes and chords from the midi files in the ./midi_songs directory """
     notes = []
 
-    for file in glob.glob("midi_songs/*.mid"):
+    for file in glob.glob("2018/schubert/*.midi"):
         midi = converter.parse(file)
 
         print("Parsing %s" % file)
@@ -56,14 +60,15 @@ def get_notes():
             elif isinstance(element, chord.Chord):
                 notes.append('.'.join(str(n) for n in element.normalOrder))
 
-    with open('data/notes', 'wb') as filepath:
+    with open('data/schubert', 'wb') as filepath:
         pickle.dump(notes, filepath)
 
     return notes
 
 def prepare_sequences(notes, n_vocab):
     """ Prepare the sequences used by the Neural Network """
-    sequence_length = 200
+    
+    sequence_length = 100
 
     # get all pitch names
     pitchnames = sorted(set(item for item in notes))
@@ -98,14 +103,14 @@ def prepare_sequences(notes, n_vocab):
 def create_network(network_input, n_vocab):
     """ create the structure of the neural network """
     model = Sequential()
-    model.add(GRU(
+    model.add(LSTM(
         512,
         input_shape=(network_input.shape[1], network_input.shape[2]),
         recurrent_dropout=0.3,
         return_sequences=True
     ))
-    model.add(GRU(512, return_sequences=False, recurrent_dropout=0.3,))
-    # model.add(GRU(512))
+    model.add(LSTM(512, return_sequences=True, recurrent_dropout=0.3,))
+    #model.add(LSTM(512))
     model.add(BatchNorm())
     model.add(Dropout(0.3))
     model.add(Dense(256))
@@ -120,7 +125,7 @@ def create_network(network_input, n_vocab):
 
 def train(model, network_input, network_output):
     """ train the neural network """
-    filepath = "weights-improvement-GRU-{epoch:02d}-{loss:.4f}-bigger.hdf5"
+    filepath = "schubert-LSTM-{epoch:02d}-{loss:.4f}-try2.hdf5"
     checkpoint = ModelCheckpoint(
         filepath,
         monitor='loss',
