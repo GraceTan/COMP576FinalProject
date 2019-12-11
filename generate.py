@@ -75,23 +75,23 @@ def create_network(network_input, n_vocab):
     print(network_input.shape)
     print(n_vocab)
     model = Sequential()
-    model.add(LSTM(
-        512,
-        input_shape=(network_input.shape[1], network_input.shape[2]),
-        recurrent_dropout=0.3,
-        return_sequences=True
-    ))
-    model.add(LSTM(512, return_sequences=True, recurrent_dropout=0.3,))
-    # model.add(LSTM(512))
-
-    # for GRU
     #model.add(LSTM(
     #    512,
     #    input_shape=(network_input.shape[1], network_input.shape[2]),
     #    recurrent_dropout=0.3,
     #    return_sequences=True
     #))
-    #model.add(LSTM(512, return_sequences=False, recurrent_dropout=0.3,))
+    #model.add(LSTM(512, return_sequences=True, recurrent_dropout=0.3,))
+    # model.add(LSTM(512))
+
+    # for GRU
+    model.add(GRU(
+        512,
+        input_shape=(network_input.shape[1], network_input.shape[2]),
+        recurrent_dropout=0.3,
+        return_sequences=True
+    ))
+    model.add(GRU(512, return_sequences=False, recurrent_dropout=0.3,))
     # model.add(GRU(512))
     
     model.add(BatchNorm())
@@ -109,7 +109,7 @@ def create_network(network_input, n_vocab):
     #model.load_weights('keepweights/weights-improvement-116-0.5497-bigger.hdf5')
     # model.load_weights('keepweights/weights-improvement-GRU-123-1.8256-bigger.hdf5')
     # model.load_weights('keepweights/maestrodata-LSTM-22-4.5200-bigger.hdf5')
-    model.load_weights('schubert_LSTM_weights/schubert-LSTM-200-2.5710-bigger.hdf5')
+    model.load_weights('schubert-GRU-198-3.5962-try2.hdf5')
     return model
 
 def generate_notes(model, network_input, pitchnames, n_vocab):
@@ -127,17 +127,17 @@ def generate_notes(model, network_input, pitchnames, n_vocab):
         if note_index % 10 == 0:
             print("on index: ", note_index)
         prediction_input = numpy.reshape(pattern, (1, len(pattern), 1))
-        print("RESHAPE: ", prediction_input)
+        #print("RESHAPE: ", prediction_input)
         prediction_input = prediction_input / float(n_vocab)
-        print("NORM: ", prediction_input)
+        #print("NORM: ", prediction_input)
         prediction = model.predict(prediction_input, verbose=0)
-        print("PREDICT: ", prediction)
+        #print("PREDICT: ", prediction)
         print(prediction.shape)
-        print("first note: ", prediction[0][0][0])
+        #print("first note: ", prediction[0][0][0])
         index = numpy.argmax(prediction)
         #index = numpy.argmax(prediction[0][0])
-        print("idx", index) 
-        print("n_vocab: ", n_vocab)
+        #print("idx", index) 
+        #print("n_vocab: ", n_vocab)
         result = int_to_note[index]
         prediction_output.append(result)
 
@@ -177,7 +177,7 @@ def create_midi(prediction_output):
 
     midi_stream = stream.Stream(output_notes)
 
-    midi_stream.write('midi', fp='schubert_LSTM_test_and_train_output.mid')
+    midi_stream.write('midi', fp='schubert_GRU_test_and_train_output.mid')
 
 if __name__ == '__main__':
     generate()

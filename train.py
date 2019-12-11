@@ -103,13 +103,13 @@ def prepare_sequences(notes, n_vocab):
 def create_network(network_input, n_vocab):
     """ create the structure of the neural network """
     model = Sequential()
-    model.add(LSTM(
+    model.add(GRU(
         512,
         input_shape=(network_input.shape[1], network_input.shape[2]),
         recurrent_dropout=0.3,
         return_sequences=True
     ))
-    model.add(LSTM(512, return_sequences=True, recurrent_dropout=0.3,))
+    model.add(GRU(512, return_sequences=False, recurrent_dropout=0.3,))
     #model.add(LSTM(512))
     model.add(BatchNorm())
     model.add(Dropout(0.3))
@@ -125,7 +125,7 @@ def create_network(network_input, n_vocab):
 
 def train(model, network_input, network_output):
     """ train the neural network """
-    filepath = "schubert-LSTM-{epoch:02d}-{loss:.4f}-try2.hdf5"
+    filepath = "schubert-GRU-{epoch:02d}-{loss:.4f}-try2.hdf5"
     checkpoint = ModelCheckpoint(
         filepath,
         monitor='loss',
