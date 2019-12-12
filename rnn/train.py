@@ -13,12 +13,6 @@ from tensorflow.keras.layers import BatchNormalization as BatchNorm
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.callbacks import ModelCheckpoint
 
-# use GPU device 0
-import tensorflow.keras
-config = tf.ConfigProto( device_count = {'GPU': 0})
-sess = tf.Session(config = config)
-tensorflow.keras.backend.set_session(sess)
-
 def train_network():
     """
     Main function

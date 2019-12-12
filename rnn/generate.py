@@ -10,15 +10,6 @@ from tensorflow.keras.layers import GRU
 from tensorflow.keras.layers import BatchNormalization as BatchNorm
 from tensorflow.keras.layers import Activation
 
-# use GPU device 0
-import os
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
-
-import tensorflow.keras
-config = tf.ConfigProto( device_count = {'GPU': 0})
-sess = tf.Session(config = config)
-tensorflow.keras.backend.set_session(sess)
-
 def generate():
     """
     Main function to generate a midi file.
