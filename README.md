@@ -1,4 +1,4 @@
-OMP 576 Fall 2019
+COMP 576 Fall 2019
 
 ### The project
 
