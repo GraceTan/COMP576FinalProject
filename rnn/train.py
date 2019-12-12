@@ -1,5 +1,3 @@
-""" This module prepares midi file data and feeds it to the neural
-    network for training """
 import glob
 import pickle
 import numpy
@@ -15,16 +13,18 @@ from tensorflow.keras.layers import BatchNormalization as BatchNorm
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.callbacks import ModelCheckpoint
 
+# use GPU device 0
 import tensorflow.keras
 config = tf.ConfigProto( device_count = {'GPU': 0})
 sess = tf.Session(config = config)
 tensorflow.keras.backend.set_session(sess)
 
 def train_network():
-    """ Train a Neural Network to generate music """
+    """
+    Main function
+    """
     notes = get_notes()
 
-    # get amount of pitch names
     n_vocab = len(set(notes))
 
     network_input, network_output = prepare_sequences(notes, n_vocab)
@@ -34,10 +34,12 @@ def train_network():
     train(model, network_input, network_output)
 
 def get_notes():
-    """ Get all the notes and chords from the midi files in the ./midi_songs directory """
+    """
+    Get notes that has been parsed during training
+    """
     notes = []
 
-    for file in glob.glob("midi_songs/*.mid"):
+    for file in glob.glob("2018/schubert/*.mid"):
         midi = converter.parse(file)
 
         print("Parsing %s" % file)
@@ -56,47 +58,54 @@ def get_notes():
             elif isinstance(element, chord.Chord):
                 notes.append('.'.join(str(n) for n in element.normalOrder))
 
-    with open('data/notes', 'wb') as filepath:
+    with open('data/schubert', 'wb') as filepath:
         pickle.dump(notes, filepath)
 
     return notes
 
 def prepare_sequences(notes, n_vocab):
-    """ Prepare the sequences used by the Neural Network """
-    sequence_length = 200
+    """
+    Parse notes and format for training
+    """
 
-    # get all pitch names
+    sequence_length = 100
+
+    # get pitch names
     pitchnames = sorted(set(item for item in notes))
 
-     # create a dictionary to map pitches to integers
+    # create a dictionary to map pitches to integers
     note_to_int = dict((note, number) for number, note in enumerate(pitchnames))
 
     network_input = []
     network_output = []
 
-    # create input sequences and the corresponding outputs
+    # split notes into 100 length chunks
     for i in range(0, len(notes) - sequence_length, 1):
         sequence_in = notes[i:i + sequence_length]
         sequence_out = notes[i + sequence_length]
         network_input.append([note_to_int[char] for char in sequence_in])
         network_output.append(note_to_int[sequence_out])
 
+    # cut data in half bc too big to train
     n_patterns = len(network_input)
     cutoff = int(n_patterns/2)
     network_input = network_input[:cutoff]
     network_output = network_output[:cutoff]
 
-    # reshape the input into a format compatible with LSTM layers
+    # reshape notes for layers in model
     network_input = numpy.reshape(network_input, (len(network_input), sequence_length, 1))
     # normalize input
     network_input = network_input / float(n_vocab)
 
+    # one hot encode the notes
     network_output = to_categorical(network_output)
 
     return (network_input, network_output)
 
 def create_network(network_input, n_vocab):
-    """ create the structure of the neural network """
+    """
+    Make the model architechture - GRU or LSTM
+    """
     model = Sequential()
     model.add(GRU(
         512,
@@ -105,7 +114,6 @@ def create_network(network_input, n_vocab):
         return_sequences=True
     ))
     model.add(GRU(512, return_sequences=False, recurrent_dropout=0.3,))
-    # model.add(GRU(512))
     model.add(BatchNorm())
     model.add(Dropout(0.3))
     model.add(Dense(256))
@@ -119,8 +127,11 @@ def create_network(network_input, n_vocab):
     return model
 
 def train(model, network_input, network_output):
-    """ train the neural network """
-    filepath = "weights-improvement-GRU-{epoch:02d}-{loss:.4f}-bigger.hdf5"
+    """
+    Train the model.
+    """
+    #save weights to this filepath
+    filepath = "weights-GRU-{epoch:02d}-{loss:.4f}-bigger.hdf5"
     checkpoint = ModelCheckpoint(
         filepath,
         monitor='loss',
